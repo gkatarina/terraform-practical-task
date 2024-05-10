@@ -45,7 +45,7 @@ resource "google_compute_url_map" "default" {
 resource "google_compute_backend_service" "default" {
   name                     = "mybackendservice"
   protocol                 = "HTTP"
-  port_name                = "my-port"
+  port_name                = "http"
   load_balancing_scheme    = "EXTERNAL"
   timeout_sec              = 10
   enable_cdn               = true
