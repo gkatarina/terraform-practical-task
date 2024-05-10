@@ -7,20 +7,20 @@
 # # }
 resource "google_compute_network" "vpc_network" {
   name = "my-network"
-  auto_create_subnetworks = false
+  auto_create_subnetworks = true
   mtu = 1460
 }
 resource "google_compute_global_address" "default" {
   name = "static-ip"
 }
-resource "google_compute_subnetwork" "vpc_subnetwork" {
-  name = "my-subnet"
-  ip_cidr_range = "10.0.0.0/24"
-  region = "us-central1"
-  purpose = "REGIONAL_MANAGED_PROXY"
-  role = "ACTIVE"
-  network = google_compute_network.vpc_network.id
-}
+# resource "google_compute_subnetwork" "vpc_subnetwork" {
+#   name = "my-subnet"
+#   ip_cidr_range = "10.0.0.0/24"
+#   region = "us-central1"
+#   purpose = "REGIONAL_MANAGED_PROXY"
+#   role = "ACTIVE"
+#   network = google_compute_network.vpc_network.id
+# }
 resource "google_compute_global_forwarding_rule" "default" {
   name = "forwarding-rules"
   ip_protocol = "TCP"
@@ -74,20 +74,13 @@ resource "google_compute_instance_template" "instance_template1" {
     metadata_startup_script = file("apachewebserver.sh")
     
     network_interface { 
-     network = google_compute_network.vpc_network.id
-     subnetwork = google_compute_subnetwork.vpc_subnetwork.id
-
+     network = "default"
       access_config {
         // Ephemeral public IP
       }
     }
 }
 
-# resource "google_compute_machine_image" "image" {
-#   provider        = google
-#   name            = "my-apachevm-image"
-#   source_instance = google_compute_instance.vm.self_link
-# }
 resource "google_compute_health_check" "default" {
   name                = "autohealing-health-check"
   check_interval_sec  = 5
@@ -116,7 +109,10 @@ resource "google_compute_instance_group_manager" "instance-apache-group" {
     name = "http"
     port = "8080"
   }
-
+  named_port {
+    name = "ssh"
+    port = "22"
+  }
   auto_healing_policies {
     health_check = google_compute_health_check.default.id
     initial_delay_sec = 300
@@ -128,7 +124,7 @@ resource "google_compute_instance_group_manager" "instance-apache-group" {
 }
 
 resource "google_compute_firewall" "default" {
-  name          = "l7-xlb-fw-allow-hc"
+  name          = "allow-healthchecks"
   direction     = "INGRESS"
   network       = google_compute_network.vpc_network.id
   source_ranges = ["130.211.0.0/22", "35.191.0.0/16"]
